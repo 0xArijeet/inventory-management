@@ -1,22 +1,58 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { Inventory, InventoryCheck } from './entities/inventory.entity';
 
 @Injectable()
 export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
   private inventory: Inventory[] = [];
 
   async checkInventory(items: { productId: string; quantity: number }[]): Promise<InventoryCheck> {
+    const prices: { [productId: string]: number } = {};
+    
     for (const item of items) {
       const inventory = this.inventory.find(inv => inv.productId === item.productId);
       if (!inventory || inventory.quantity < item.quantity) {
         return {
           available: false,
           message: `Insufficient inventory for product ${item.productId}`,
+          prices: {}
         };
       }
+      prices[item.productId] = inventory.price;
     }
-    return { available: true };
+    
+    return { 
+      available: true,
+      prices 
+    };
+  }
+
+  async reserveInventory(items: { productId: string; quantity: number }[]): Promise<InventoryCheck> {
+    try {
+   
+      const check = await this.checkInventory(items);
+      if (!check.available) {
+        return check;
+      }
+
+      for (const item of items) {
+        const inventory = this.inventory.find(inv => inv.productId === item.productId);
+        if (inventory) {
+          inventory.quantity -= item.quantity;
+          inventory.updatedAt = new Date();
+        }
+      }
+
+      return { available: true, prices: check.prices };
+    } catch (error) {
+      this.logger.error(`Failed to reserve inventory: ${error.message}`);
+      return {
+        available: false,
+        message: `Failed to reserve inventory: ${error.message}`,
+        prices: {}
+      };
+    }
   }
 
   async updateInventory(updateInventoryDto: UpdateInventoryDto): Promise<Inventory> {
@@ -46,6 +82,10 @@ export class InventoryService {
   }
 
   findOne(productId: string): Inventory {
-    return this.inventory.find(inv => inv.productId === productId);
+    const inventory = this.inventory.find(inv => inv.productId === productId);
+    if (!inventory) {
+      throw new Error('Inventory not found');
+    }
+    return inventory;
   }
 } 

@@ -9,4 +9,5 @@ export class Inventory {
 export class InventoryCheck {
   available: boolean;
   message?: string;
+  prices: { [productId: string]: number };
 } 
