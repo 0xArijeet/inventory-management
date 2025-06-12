@@ -15,12 +15,13 @@ export class OrdersService {
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
     try {
+      // Check inventory availability with timeout and retry
       const inventoryCheck = await firstValueFrom(
         this.inventoryClient
           .send('check_inventory', createOrderDto.items)
           .pipe(
             timeout(5000), // 5 second timeout
-            retry(3),
+            retry(3), // Retry 3 times
           ),
       );
 

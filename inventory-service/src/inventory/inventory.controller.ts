@@ -25,7 +25,7 @@ export class InventoryController {
     return this.inventoryService.findOne(productId);
   }
 
-  @MessagePattern({ cmd: 'check_inventory', queue: 'inventory-check' })
+  @MessagePattern('check_inventory')
   async checkInventory(
     @Payload() items: { productId: string; quantity: number }[],
     @Ctx() context: NatsContext,
@@ -34,7 +34,7 @@ export class InventoryController {
     return this.inventoryService.checkInventory(items);
   }
 
-  @MessagePattern({ cmd: 'reserve_inventory', queue: 'inventory-reserve' })
+  @MessagePattern('reserve_inventory')
   async reserveInventory(
     @Payload() items: { productId: string; quantity: number }[],
     @Ctx() context: NatsContext,

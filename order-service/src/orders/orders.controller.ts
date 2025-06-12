@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, HttpException, HttpStatus } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -8,8 +8,23 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  create(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
-    return this.ordersService.create(createOrderDto);
+  async create(@Body() createOrderDto: CreateOrderDto) {
+    try {
+      return await this.ordersService.create(createOrderDto);
+    } catch (error) {
+      if (error.message.includes('Insufficient inventory')) {
+        throw new HttpException({
+          status: HttpStatus.BAD_REQUEST,
+          error: 'Insufficient inventory',
+          message: error.message,
+        }, HttpStatus.BAD_REQUEST);
+      }
+      throw new HttpException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: 'Internal server error',
+        message: error.message,
+      }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Get()
@@ -23,10 +38,25 @@ export class OrdersController {
   }
 
   @Put(':id/status')
-  updateStatus(
+  async updateStatus(
     @Param('id') id: string,
     @Body('status') status: OrderStatus,
   ): Promise<Order> {
-    return this.ordersService.updateStatus(id, status);
+    try {
+      return await this.ordersService.updateStatus(id, status);
+    } catch (error) {
+      if (error.message.includes('Order not found')) {
+        throw new HttpException({
+          status: HttpStatus.NOT_FOUND,
+          error: 'Order not found',
+          message: error.message,
+        }, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: 'Internal server error',
+        message: error.message,
+      }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 } 
